@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#07070a" />
+  <meta name="description" content="Professional vertical jump analyzer. Measure jump height from flight time using your phone camera or uploaded video." />
+  <title>JumpLab — Vertical Jump Analyzer</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- SPLASH -->
+  <div id="splash" class="screen active">
+    <div class="splash-bg"></div>
+    <div class="splash-content">
+      <div class="logo-mark">JL</div>
+      <h1>JumpLab</h1>
+      <p class="tagline">Precision vertical jump analysis</p>
+      <div class="mode-cards">
+        <button class="mode-card" id="btn-mode-live">
+          <div class="mode-icon">📷</div>
+          <div class="mode-title">Live Camera</div>
+          <div class="mode-desc">Auto-detect takeoff &amp; landing from flight time</div>
+        </button>
+        <button class="mode-card" id="btn-mode-video">
+          <div class="mode-icon">🎬</div>
+          <div class="mode-title">Video Upload</div>
+          <div class="mode-desc">Mark frames manually for highest accuracy</div>
+        </button>
+      </div>
+      <p class="hint">h = g × t² / 8 &nbsp;·&nbsp; flight-time method</p>
+    </div>
+  </div>
+
+  <!-- LIVE MODE -->
+  <div id="live" class="screen">
+    <div class="camera-wrap">
+      <video id="live-video" playsinline muted autoplay></video>
+      <canvas id="live-overlay"></canvas>
+
+      <div class="hud top-hud">
+        <button class="icon-btn glass" id="btn-live-back" aria-label="Back">←</button>
+        <div class="hud-pill">
+          <span class="label">JUMPS</span>
+          <span class="value" id="live-count">0</span>
+        </div>
+        <div class="hud-pill accent">
+          <span class="label">BEST</span>
+          <span class="value mono" id="live-best">—</span>
+        </div>
+        <button class="icon-btn glass" id="btn-live-settings" aria-label="Settings">⚙</button>
+      </div>
+
+      <div class="hud center-hud">
+        <div class="flight-display">
+          <div class="flight-time mono" id="live-flight">0.000</div>
+          <div class="flight-unit">sec flight</div>
+        </div>
+        <div class="height-display">
+          <div class="height-num mono" id="live-height">—</div>
+          <div class="height-unit" id="live-height-unit">in</div>
+        </div>
+        <div class="status-badge" id="live-status">Stand still in frame</div>
+      </div>
+
+      <div class="roi-hint" id="roi-hint">Keep feet inside the green zone</div>
+    </div>
+
+    <div class="jump-type-bar">
+      <button class="type-btn active" id="btn-type-stationary" data-type="stationary">Stationary</button>
+      <button class="type-btn" id="btn-type-dynamic" data-type="dynamic">Dynamic</button>
+    </div>
+
+    <div class="controls">
+      <button class="ctrl-btn" id="btn-live-reset">
+        <span>Reset</span>
+      </button>
+      <button class="ctrl-btn primary" id="btn-live-arm">
+        <span id="arm-label">Arm Sensor</span>
+      </button>
+      <button class="ctrl-btn" id="btn-live-history">
+        <span>History</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- VIDEO MODE -->
+  <div id="video-mode" class="screen">
+    <header class="top-bar">
+      <button class="icon-btn" id="btn-video-back" aria-label="Back">←</button>
+      <h2>Video Analysis</h2>
+      <button class="icon-btn" id="btn-video-help" aria-label="Help">?</button>
+    </header>
+
+    <div class="video-workspace">
+      <div class="video-stage" id="video-stage">
+        <video id="analysis-video" playsinline webkit-playsinline preload="auto"></video>
+        <canvas id="video-overlay"></canvas>
+        <div class="drop-zone" id="drop-zone">
+          <div class="drop-icon">↑</div>
+          <p>Drop a jump video here<br>or tap to browse</p>
+          <input type="file" id="video-file" accept="video/*,.mp4,.mov,.webm,.m4v" hidden />
+        </div>
+      </div>
+
+      <div class="timeline-panel" id="timeline-panel" hidden>
+        <div class="scrub-row">
+          <button class="icon-btn sm" id="btn-frame-back">‹</button>
+          <input type="range" id="scrubber" min="0" max="1000" value="0" step="1" />
+          <button class="icon-btn sm" id="btn-frame-fwd">›</button>
+        </div>
+        <div class="time-row">
+          <span class="mono" id="current-time">0.000s</span>
+          <span class="mono muted" id="total-time">/ 0.000s</span>
+          <span class="frame-badge mono" id="frame-num">f 0</span>
+        </div>
+
+        <div class="mark-row">
+          <button class="mark-btn" id="btn-mark-takeoff">
+            <span class="mark-dot takeoff"></span>
+            Set Takeoff
+            <span class="mark-val mono" id="takeoff-val">—</span>
+          </button>
+          <button class="mark-btn" id="btn-mark-landing">
+            <span class="mark-dot landing"></span>
+            Set Landing
+            <span class="mark-val mono" id="landing-val">—</span>
+          </button>
+        </div>
+
+        <div class="calc-card" id="calc-card">
+          <div class="calc-grid">
+            <div>
+              <span class="stat-label">Flight Time</span>
+              <span class="stat-value mono" id="vid-flight">—</span>
+            </div>
+            <div>
+              <span class="stat-label">Jump Height</span>
+              <span class="stat-value mono accent" id="vid-height">—</span>
+            </div>
+            <div>
+              <span class="stat-label">FPS</span>
+              <span class="stat-value mono" id="vid-fps">—</span>
+            </div>
+          </div>
+          <div class="vid-settings-row">
+            <label class="field inline">
+              <span>FPS</span>
+              <input type="number" id="fps-input" min="1" max="240" step="0.1" placeholder="30" inputmode="decimal" />
+            </label>
+            <label class="field inline">
+              <span>Units</span>
+              <select id="vid-unit-pref">
+                <option value="imperial" selected>Inches</option>
+                <option value="metric">cm</option>
+              </select>
+            </label>
+          </div>
+          <button class="btn primary full" id="btn-save-video-jump" disabled>Save Jump</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS / HISTORY DRAWER -->
+  <div id="drawer" class="drawer hidden">
+    <div class="drawer-content">
+      <header>
+        <h2>Session History</h2>
+        <button class="icon-btn" id="btn-close-drawer">✕</button>
+      </header>
+      <div class="drawer-body">
+        <div class="session-stats" id="session-stats">
+          <div class="stat"><span class="stat-label">Attempts</span><span class="stat-value" id="hist-count">0</span></div>
+          <div class="stat"><span class="stat-label">Best</span><span class="stat-value mono" id="hist-best">—</span></div>
+          <div class="stat"><span class="stat-label">Avg</span><span class="stat-value mono" id="hist-avg">—</span></div>
+        </div>
+        <div class="jump-list" id="jump-list"></div>
+        <section class="settings-section">
+          <h3>Preferences</h3>
+          <label class="field">
+            <span>Units</span>
+            <select id="unit-pref">
+              <option value="imperial" selected>Inches (in)</option>
+              <option value="metric">Centimeters (cm)</option>
+            </select>
+          </label>
+          <label class="toggle">
+            <input type="checkbox" id="audio-enabled" checked />
+            <span>Audio cues</span>
+          </label>
+          <label class="field">
+            <span>Leave-box sensitivity</span>
+            <input type="range" id="sensitivity" min="5" max="40" value="18" />
+          </label>
+          <p style="font-size:12px;color:var(--muted);line-height:1.4;margin-top:4px">
+            Higher = triggers takeoff more easily when feet leave the zone. Lower if it false-triggers from small shifts.
+          </p>
+        </section>
+        <button class="btn danger full" id="btn-clear-history">Clear History</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULT TOAST -->
+  <div id="result-toast" class="toast hidden">
+    <div class="toast-height mono" id="toast-height">0.0</div>
+    <div class="toast-label">in vertical</div>
+    <div class="toast-flight mono" id="toast-flight">0.000s flight</div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
